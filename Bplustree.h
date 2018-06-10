@@ -17,7 +17,7 @@ namespace sjtu {
 	public:
 		class Iterator;
 	private:
-		static const int maxKeyNum = 80;
+		static const int maxKeyNum = 40;
 		static const int miniKeyNum = maxKeyNum / 2;
 		static const int maxn = maxKeyNum + 2;
 
@@ -63,12 +63,12 @@ namespace sjtu {
 			File.seekg(t.offset[i], std::ios::beg);
 			if (t.isLeaf) {
 				dataNode p;
-				File.read((char *)(&p), dataNodeSize);
+				File.read(reinterpret_cast<char *>(&p), dataNodeSize);
 				return dataSearch(_k, p);
 			}
 			else {
 				idxNode p;
-				File.read((char *)(&p), idxNodeSize);
+				File.read(reinterpret_cast<char *>(&p), idxNodeSize);
 				return idxSearch(_k, p);
 			}
 		}
@@ -92,12 +92,12 @@ namespace sjtu {
 			File.seekg(t.offset[i + 1], std::ios::beg);
 			if (t.isLeaf) {
 				dataNode p;
-				File.read((char *)(&p), dataNodeSize);
+				File.read(reinterpret_cast<char *>(&p), dataNodeSize);
 				return antiLower_boundData(_k, p);
 			}
 			else {
 				idxNode p;
-				File.read((char *)(&p), idxNodeSize);
+				File.read(reinterpret_cast<char *>(&p), idxNodeSize);
 				return antiLower_bound(_k, p);
 			}
 		}
@@ -124,25 +124,25 @@ namespace sjtu {
 			if (t->isLeaf) {
 				File.seekg(t->offset[i], std::ios::beg);
 				dataNode *p = new dataNode;
-				File.read((char *)(p), dataNodeSize);
+				File.read(reinterpret_cast<char *>(p), dataNodeSize);
 				newNode = insertData(_k, _data, p);
 				if (i == 0) t->miniKey = p->key[0];
 				else t->key[i - 1] = p->key[0];
 
 				File.seekp(t->offset[i], std::ios::beg);
-				File.write((char *)(p), dataNodeSize);
-
+				File.write(reinterpret_cast<char *>(p), dataNodeSize);
+				File.flush();
 				delete p;
 			}
 			else {
 				File.seekg(t->offset[i], std::ios::beg);
 				idxNode *p = new idxNode;
-				File.read((char *)(p), idxNodeSize);
+				File.read(reinterpret_cast<char *>(p), idxNodeSize);
 				newNode = insert(_k, _data, p);
 				if (i == 0) t->miniKey = p->miniKey;
 				else t->key[i - 1] = p->miniKey;
 				File.seekp(t->offset[i], std::ios::beg);
-				File.write((char *)(p), idxNodeSize);
+				File.write(reinterpret_cast<char *>(p), idxNodeSize);
 
 				delete p;
 			}
@@ -175,6 +175,7 @@ namespace sjtu {
 			Size++;
 			File.seekp(0, std::ios::beg);
 			File.write(reinterpret_cast<char *>(&Size), sizeof(int));
+			File.flush();
 
 			if (t->keyNum <= maxKeyNum) return NULL;
 			else {
@@ -206,11 +207,12 @@ namespace sjtu {
 			t->offset[i + 1] = _offset;
 			t->keyNum++;
 			File.seekp(_offset, std::ios::beg);
-			File.write((char *)(newNode), idxNodeSize);
+			File.write(reinterpret_cast<char *>(newNode), idxNodeSize);
 			File.flush();
 			_offset += idxNodeSize;
 			File.seekp(sizeof(int), std::ios::beg);
 			File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
+			File.flush();
 			if (t->keyNum <= maxKeyNum) {
 				delete newNode;
 				return NULL;
@@ -245,11 +247,11 @@ namespace sjtu {
 			t->keyNum++;
 
 			File.seekp(_offset, std::ios::beg);
-			File.write((char *)(newNode), dataNodeSize);
-			File.flush();
+			File.write(reinterpret_cast<char *>(newNode), dataNodeSize);
 			_offset += dataNodeSize;
 			File.seekp(sizeof(int), std::ios::beg);
-			File.write((char *)(&_offset), sizeof(int));
+			File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
+			File.flush();
 			if (t->keyNum <= Bplustree<Key, T>::maxKeyNum) {
 				delete newNode;
 				return NULL;
@@ -283,27 +285,25 @@ namespace sjtu {
 				//putidx(t->offset[i]);
 				File.seekg(t->offset[i], std::ios::beg);
 				idxNode *p = new idxNode;
-				File.read((char *)(p), idxNodeSize);
+				File.read(reinterpret_cast<char *>(p), idxNodeSize);
 				newNode = erase(_k, p);
 				if (i == 0) t->miniKey = p->miniKey;
 				else t->key[i - 1] = p->miniKey;
 				File.seekp(t->offset[i], std::ios::beg);
-				File.write((char *)(p), idxNodeSize);
+				File.write(reinterpret_cast<char *>(p), idxNodeSize);
 				File.flush();
 				if (newNode == NULL) delete p;
 			}
 			else {
 				//putData(t->offset[i]);
 				File.seekg(t->offset[i], std::ios::beg);
-
 				dataNode *p = new dataNode;
-				File.read((char *)(p), dataNodeSize);
-
+				File.read(reinterpret_cast<char *>(p), dataNodeSize);
 				newNode = eraseData(_k, p);
 				if (i == 0) t->miniKey = p->key[0];
 				else t->key[i - 1] = p->key[0];
 				File.seekp(t->offset[i], std::ios::beg);
-				File.write((char *)(p), dataNodeSize);
+				File.write(reinterpret_cast<char *>(p), dataNodeSize);
 				File.flush();
 				if (newNode == NULL) delete p;
 			}
@@ -334,8 +334,8 @@ namespace sjtu {
 			t->keyNum--;
 			Size--;
 			File.seekp(0);
-			File.write((char *)(&Size), sizeof(int));
-
+			File.write(reinterpret_cast<char *>(&Size), sizeof(int));
+			File.flush();
 			if (t->keyNum >= miniKeyNum)
 				return NULL;
 			else return t;
@@ -352,7 +352,7 @@ namespace sjtu {
 			if (i != t->keyNum) {
 				dataNode *next = new dataNode;
 				File.seekg(t->offset[i + 1], std::ios::beg);
-				File.read((char *)(next), dataNodeSize);
+				File.read(reinterpret_cast<char *>(next), dataNodeSize);
 				if (next->keyNum > miniKeyNum) {
 					//borrow
 					//cerr << "borrow1 in addData" << endl;
@@ -367,9 +367,9 @@ namespace sjtu {
 					t->key[i] = next->key[0];
 					t->key[i - 1] = n->key[0];
 					File.seekp(t->offset[i], std::ios::beg);
-					File.write((char *)(n), dataNodeSize);
+					File.write(reinterpret_cast<char *>(n), dataNodeSize);
 					File.seekp(t->offset[i + 1], std::ios::beg);
-					File.write((char *)(next), dataNodeSize);
+					File.write(reinterpret_cast<char *>(next), dataNodeSize);
 					File.flush();
 				}
 				else {
@@ -391,7 +391,7 @@ namespace sjtu {
 					}
 					t->key[i - 1] = n->key[0];
 					File.seekp(t->offset[i], std::ios::beg);
-					File.write((char *)(n), dataNodeSize);
+					File.write(reinterpret_cast<char *>(n), dataNodeSize);
 					//					putData(t->offset[i]);
 					File.flush();
 				}
@@ -400,7 +400,7 @@ namespace sjtu {
 			else if (i != 0) {
 				dataNode *pre = new dataNode;
 				File.seekg(t->offset[i - 1], std::ios::beg);
-				File.read((char *)(pre), dataNodeSize);
+				File.read(reinterpret_cast<char *>(pre), dataNodeSize);
 				if (pre->keyNum > miniKeyNum) {
 					//borrow
 					//cerr << "borrow2 in addData" << endl;
@@ -414,9 +414,9 @@ namespace sjtu {
 					n->data[0] = pre->data[pre->keyNum];
 					t->key[i - 1] = n->key[0];
 					File.seekp(t->offset[i - 1], std::ios::beg);
-					File.write((char *)(pre), dataNodeSize);
+					File.write(reinterpret_cast<char *>(pre), dataNodeSize);
 					File.seekp(t->offset[i], std::ios::beg);
-					File.write((char *)(n), dataNodeSize);
+					File.write(reinterpret_cast<char *>(n), dataNodeSize);
 					File.flush();
 				}
 				else {
@@ -435,7 +435,7 @@ namespace sjtu {
 						t->offset[j + 1] = t->offset[j + 2];
 					}
 					File.seekp(t->offset[i - 1], std::ios::beg);
-					File.write((char *)(pre), dataNodeSize);
+					File.write(reinterpret_cast<char *>(pre), dataNodeSize);
 					File.flush();
 				}
 				delete pre;
@@ -457,7 +457,7 @@ namespace sjtu {
 			if (i != t->keyNum) {
 				idxNode *next = new idxNode;
 				File.seekg(t->offset[i + 1], std::ios::beg);
-				File.read((char *)(next), idxNodeSize);
+				File.read(reinterpret_cast<char *>(next), idxNodeSize);
 				if (next->keyNum > miniKeyNum) {
 					//borrow
 					//cerr << "borrow1 in addIdx" << endl;
@@ -474,9 +474,9 @@ namespace sjtu {
 					next->offset[j] = next->offset[j + 1];
 					t->key[i] = next->miniKey;
 					File.seekg(t->offset[i], std::ios::beg);
-					File.write((char *)(n), idxNodeSize);
+					File.write(reinterpret_cast<char *>(n), idxNodeSize);
 					File.seekp(t->offset[i + 1], std::ios::beg);
-					File.write((char *)(next), idxNodeSize);
+					File.write(reinterpret_cast<char *>(next), idxNodeSize);
 					File.flush();
 				}
 				else {
@@ -498,7 +498,7 @@ namespace sjtu {
 					}
 					t->key[i - 1] = n->miniKey;
 					File.seekp(t->offset[i], std::ios::beg);
-					File.write((char *)(n), idxNodeSize);
+					File.write(reinterpret_cast<char *>(n), idxNodeSize);
 					File.flush();
 				}
 				delete next;
@@ -506,7 +506,7 @@ namespace sjtu {
 			else if (i != 0) {
 				idxNode *pre = new idxNode;
 				File.seekg(t->offset[i - 1], std::ios::beg);
-				File.read((char *)(pre), idxNodeSize);
+				File.read(reinterpret_cast<char *>(pre), idxNodeSize);
 				if (pre->keyNum > miniKeyNum) {
 					//borrow
 					//cerr << "borrow2 in addIdx" << endl;
@@ -523,9 +523,9 @@ namespace sjtu {
 					n->miniKey = pre->key[pre->keyNum];
 					t->key[i - 1] = n->miniKey;
 					File.seekg(t->offset[i - 1], std::ios::beg);
-					File.write((char *)(pre), idxNodeSize);
+					File.write(reinterpret_cast<char *>(pre), idxNodeSize);
 					File.seekp(t->offset[i], std::ios::beg);
-					File.write((char *)(n), idxNodeSize);
+					File.write(reinterpret_cast<char *>(n), idxNodeSize);
 					File.flush();
 				}
 				else {
@@ -546,7 +546,7 @@ namespace sjtu {
 						t->offset[j + 1] = t->offset[j + 2];
 					}
 					File.seekp(t->offset[i - 1], std::ios::beg);
-					File.write((char *)(pre), idxNodeSize);
+					File.write(reinterpret_cast<char *>(pre), idxNodeSize);
 					File.flush();
 				}
 				delete pre;
@@ -585,7 +585,7 @@ namespace sjtu {
 					}
 					else {
 						tree_ptr->File.seekg(node.nextoffset, std::ios::beg);
-						tree_ptr->File.read((char *)(&node), tree_ptr->dataNodeSize);
+						tree_ptr->File.read(reinterpret_cast<char *>(&node), tree_ptr->dataNodeSize);
 						pos = 0;
 					}
 				}
@@ -600,7 +600,7 @@ namespace sjtu {
 					}
 					else {
 						tree_ptr->File.seekg(node.nextoffset, std::ios::beg);
-						tree_ptr->File.read((char *)(&node), tree_ptr->dataNodeSize);
+						tree_ptr->File.read(reinterpret_cast<char *>(&node), tree_ptr->dataNodeSize);
 						pos = 0;
 					}
 				}
@@ -617,7 +617,7 @@ namespace sjtu {
 
 			void save() {
 				tree_ptr->File.seekp(node.Offset, std::ios::beg);
-				tree_ptr->File.write((char *)(&node), tree_ptr->dataNodeSize);
+				tree_ptr->File.write(reinterpret_cast<char *>(&node), tree_ptr->dataNodeSize);
 				tree_ptr->File.flush();
 			}
 
@@ -647,28 +647,37 @@ namespace sjtu {
 			root = new idxNode;
 			if (File.is_open()) {
 				File.seekg(0, std::ios::beg);
-				File.read((char *)(&Size), sizeof(int));
-				File.read((char *)(&_offset), sizeof(int));
-				File.read((char *)(leftHead), dataNodeSize);
-				File.read((char *)(root), idxNodeSize);
+				File.read(reinterpret_cast<char *>(&Size), sizeof(int));
+				File.read(reinterpret_cast<char *>(&_offset), sizeof(int));
+				File.read(reinterpret_cast<char *>(leftHead), dataNodeSize);
+				File.read(reinterpret_cast<char *>(root), idxNodeSize);
 			}
 			else {
+				root = new idxNode;
+				leftHead = new dataNode;
 				_offset = 2 * sizeof(int) + dataNodeSize + idxNodeSize;
 				Size = 0;
 				File.open(path.c_str(), std::ios::out);
 				File.close();
 				File.open(path.c_str(), std::ios::binary | std::ios::ate | std::ios::out | std::ios::in);
 				File.seekp(0, std::ios::beg);
-				File.write((char *)(&Size), sizeof(int));
-				File.write((char *)(&_offset), sizeof(int));
-				File.write((char *)(leftHead), dataNodeSize);
-				File.write((char *)(root), idxNodeSize);
+				File.write(reinterpret_cast<char *>(&Size), sizeof(int));
+				File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
+				File.write(reinterpret_cast<char *>(leftHead), dataNodeSize);
+				File.write(reinterpret_cast<char *>(root), idxNodeSize);
 				File.flush();
 			}
 		}
 
 		//destructor
 		~Bplustree() {
+			File.seekp(0, std::ios::beg);
+			File.write(reinterpret_cast<char *>(&Size), sizeof(int));
+			File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
+			//File.write(reinterpret_cast<char *>(leftHead), dataNodeSize);
+			File.seekp(sizeof(int) * 2 + dataNodeSize, std::ios::beg);
+			File.write(reinterpret_cast<char *>(root), idxNodeSize);
+			File.flush();
 			delete root;
 			delete leftHead;
 			File.close();
@@ -709,12 +718,12 @@ namespace sjtu {
 				leftHead->Offset = 2 * sizeof(int);
 				root->offset[0] = 2 * sizeof(int);
 				File.seekp(2 * sizeof(int), std::ios::beg);
-				File.write((char *)(leftHead), dataNodeSize);
-				File.write((char *)(root), idxNodeSize);
-				File.flush();
+				File.write(reinterpret_cast<char *>(leftHead), dataNodeSize);
+				File.write(reinterpret_cast<char *>(root), idxNodeSize);
 				Size++;
 				File.seekp(0, std::ios::beg);
 				File.write(reinterpret_cast<char *>(&Size), sizeof(int));
+				File.flush();
 				return;
 			}
 			idxNode *q = insert(_k, _data, root);
@@ -728,13 +737,14 @@ namespace sjtu {
 				root->offset[0] = _offset;
 				root->offset[1] = _offset + idxNodeSize;
 				File.seekp(2 * sizeof(int) + dataNodeSize, std::ios::beg);
-				File.write((char *)(root), idxNodeSize);
+				File.write(reinterpret_cast<char *>(root), idxNodeSize);
 				File.seekp(_offset, std::ios::beg);
-				File.write((char *)(t), idxNodeSize);
-				File.write((char *)(q), idxNodeSize);
+				File.write(reinterpret_cast<char *>(t), idxNodeSize);
+				File.write(reinterpret_cast<char *>(q), idxNodeSize);
 				_offset += 2 * idxNodeSize;
 				File.seekp(sizeof(int), std::ios::beg);
 				File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
+				File.flush();
 				delete t;
 				delete q;
 			}
@@ -748,10 +758,10 @@ namespace sjtu {
 				if (r != NULL) {
 					if (r->keyNum != 0) {
 						File.seekg(root->offset[0], std::ios::beg);
-						File.read((char *)(root), idxNodeSize);
+						File.read(reinterpret_cast<char *>(root), idxNodeSize);
 					}
 					File.seekp(2 * sizeof(int) + dataNodeSize, std::ios::beg);
-					File.write((char *)(root), idxNodeSize);
+					File.write(reinterpret_cast<char *>(root), idxNodeSize);
 					File.flush();
 				}
 			}
@@ -777,20 +787,19 @@ namespace sjtu {
 			leftHead = new dataNode;
 			_offset = 2 * sizeof(int) + dataNodeSize + idxNodeSize;
 			Size = 0;
-			// std::cerr << path << std::endl;
 			File.open(path.c_str(), std::ios::out);
-			std::cerr << "asdfasdf " << File.is_open() << std::endl;
 			File.close();
 			File.open(path.c_str(), std::ios::binary | std::ios::ate | std::ios::out | std::ios::in);
-			std::cerr << "asdfasdf " << File.is_open() << std::endl;
 			File.seekp(0, std::ios::beg);
-			File.write((char *)(&Size), sizeof(int));
-			File.write((char *)(&_offset), sizeof(int));
-			File.write((char *)(leftHead), dataNodeSize);
-			File.write((char *)(root), idxNodeSize);
+			File.write(reinterpret_cast<char *>(&Size), sizeof(int));
+			File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
+			File.write(reinterpret_cast<char *>(leftHead), dataNodeSize);
+			File.write(reinterpret_cast<char *>(root), idxNodeSize);
 			File.flush();
 		}
-
+		void save(){
+			File.flush();
+		}
 		/*void Print() {
 			puts("-------------------------Print Tree----------------------------------");
 			Printidx(*root);
@@ -804,7 +813,7 @@ namespace sjtu {
 				for (int i = 0; i <= t.keyNum; i++) {
 					idxNode p;
 					File.seekg(t.offset[i]);
-					File.read((char *)(&p), idxNodeSize);
+					File.read(reinterpret_cast<char *>(&p), idxNodeSize);
 					Printidx(p);
 				}
 			}
@@ -812,7 +821,7 @@ namespace sjtu {
 				for (int i = 0; i <= t.keyNum; i++) {
 					dataNode p;
 					File.seekg(t.offset[i]);
-					File.read((char *)(&p), dataNodeSize);
+					File.read(reinterpret_cast<char *>(&p), dataNodeSize);
 					printdata(p);
 				}
 			}
@@ -821,7 +830,7 @@ namespace sjtu {
 		void putData(int offset) {
 			dataNode t;
 			File.seekg(offset);
-			File.read((char *)(&t), dataNodeSize);
+			File.read(reinterpret_cast<char *>(&t), dataNodeSize);
 			putchar("[");
 			printdata(t);
 			puts("]");
@@ -829,7 +838,7 @@ namespace sjtu {
 		void putidx(int offset) {
 			idxNode t;
 			File.seekg(offset);
-			File.read((char *)(&t), idxNodeSize);
+			File.read(reinterpret_cast<char *>(&t), idxNodeSize);
 			putchar('{');
 			cout << endl;
 			printidx(t);

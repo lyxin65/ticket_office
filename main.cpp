@@ -78,6 +78,7 @@ int main()
 				}*/
 			}
 		}
+//		if (i == command_num - 1) return 0;
 		if (i == command_num)
 			fprintf(stderr, "Not found command %s\n", current_command.c_str());
 	}
