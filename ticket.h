@@ -25,7 +25,6 @@ struct ticket {
 		while (time1 >= 1440) {
 			time1 -= 1440;
 			time2 -= 1440;
-			date1++;
 		}
 		date2 = date1;
 		while (time2 >= 1440) {
@@ -93,9 +92,12 @@ void getleftticket(char *id, int l, int r, int n, int date, int left[], double p
 		it++;
 		if (!(strcmp(id, it.key().TrainId) == 0 && it.key().nth <= r))
 			break;
+		int t = date;
+		if(tmp->start_time >= 1440)
+			t++;		
 		for (int i = 0; i < n; i++) {
-			if (left[i] > tmp->leftTicket[i][date]) 
-				left[i] = tmp->leftTicket[i][date];
+			if (left[i] > tmp->leftTicket[i][t]) 
+				left[i] = tmp->leftTicket[i][t];
 		}
 		if(it->start_time - now >= 1440)
 			date++, now += 1440;
@@ -114,7 +116,7 @@ void getticket(char loc1[], char loc2[], char date[], char cat, vector<ticket> &
 		if (id1 == id2 && it1->nth < it2.data().nth) {
 			int n = it1->PriceNum;
 			ticket t(id1.c_str(), n, date, it1->start_time, it2->arr_time);
-			getleftticket(const_cast<char*>(id1.c_str()), it1->nth, it2->nth, n, t.date1 - 1, t.leftTicket, t.price);
+			getleftticket(const_cast<char*>(id1.c_str()), it1->nth, it2->nth, n, t.date1, t.leftTicket, t.price);
 			for (int i = 0; i < n; i++)
 				strcpy(t.ticketKind[i], it1->Catalog[i]);
 			tmp.push_back(t);
@@ -312,7 +314,7 @@ public:
 sjtu::Bplustree<OrderKey, Order> OrderBpt("OrderBpt");
 
 void printDate(int x) {
-	printf("2018-06-%c%c ", x / 10 + '0', x % 10 + '0' + 1);
+	printf("2018-06-%c%c ", x / 10 + '0', x % 10 + '0');
 }
 
 bool buy_ticket() {
@@ -320,7 +322,7 @@ bool buy_ticket() {
 	Order order;
 	char l1[41], l2[41], d[11];
 	scanf("%d%d%s%s%s%s%s", &orderKey.Id, &order.Num, orderKey.TrainId, l1, l2, d, orderKey.TicketKind);
-	orderKey.dateNum = (d[8] - '0') * 10 + d[9] - '0' - 1;
+	orderKey.dateNum = (d[8] - '0') * 10 + d[9] - '0';
 
 	auto itU = UserBpt.search(orderKey.Id);
 	auto itT0 = TrainBpt.search(TrainKey(orderKey.TrainId, 0));
@@ -338,9 +340,9 @@ bool buy_ticket() {
 	orderKey.nth1 = itS1->nth;
 	orderKey.nth2 = itS2->nth;
 	auto itT = TrainBpt.search(TrainKey(orderKey.TrainId, itS1->nth));
-	if (itT->start_time >= 1440) {
-		orderKey.dateNum--;
-	}
+//	if (itT->start_time >= 1440) {
+//		orderKey.dateNum--;
+//	}
 	orderKey.Catalog = itS1.key().catalog;
 	auto itO = OrderBpt.search(orderKey);
 
@@ -355,6 +357,7 @@ bool buy_ticket() {
 	auto tmp = itT;
 	for (; tmp.key().nth != itS2->nth; tmp++)
 		if (tmp->leftTicket[i][orderKey.dateNum] < order.Num) {
+			//std::cout <<tmp.key().nth<<" "<<i<<" " << tmp->leftTicket[i][orderKey.dateNum]<<" " << order.Num << " ";
 			puts("0");
 			return 0;
 		}
@@ -381,7 +384,7 @@ bool refund_ticket() {
 	int num;
 	char l1[41], l2[41], d[11];
 	scanf("%d%d%s%s%s%s%s", &orderKey.Id, &num, orderKey.TrainId, l1, l2, d, orderKey.TicketKind);
-	orderKey.dateNum = (d[8] - '0') * 10 + d[9] - '0' - 1;
+	orderKey.dateNum = (d[8] - '0') * 10 + d[9] - '0';
 
 	auto itU = UserBpt.search(orderKey.Id);
 	auto itT0 = TrainBpt.search(TrainKey(orderKey.TrainId, 0));
@@ -436,13 +439,12 @@ bool query_order() {
 	scanf("%d%s%s", &id, date, c);
 	char cata = c[0];
 
-	d = (date[8] - '0') * 10 + date[9] - '0' - 1;
+	d = (date[8] - '0') * 10 + date[9] - '0';
 	auto itO = OrderBpt.lower_bound(OrderKey(id, cata, d));
 	if (!itO.valid()) {
 		puts("-1");
 		return 0;
 	}
-
 
 	vector<OrderKey> vec[5];
 	vector<Order> vecO[5];
