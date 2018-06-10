@@ -20,13 +20,14 @@ struct ticket {
 		strcpy(trainId, id);
 		num = _num;
 		date1 = (date[8] - '0') * 10 + date[9] - '0';
-		date2 = date1;
 		time1 = t1;
 		time2 = t2;
 		while (time1 >= 1440) {
 			time1 -= 1440;
 			time2 -= 1440;
+			date1++;
 		}
+		date2 = date1;
 		while (time2 >= 1440) {
 			time2 -= 1440;
 			date2++;
@@ -323,7 +324,7 @@ bool buy_ticket() {
 
 	auto itU = UserBpt.search(orderKey.Id);
 	auto itT0 = TrainBpt.search(TrainKey(orderKey.TrainId, 0));
-	if (!itT0.valid()) {
+	if (!itT0.valid() || !itT0->pub) {
 		puts("0");
 		return 0;
 	}
@@ -333,9 +334,13 @@ bool buy_ticket() {
 		puts("0");
 		return 0;
 	}
+	
 	orderKey.nth1 = itS1->nth;
 	orderKey.nth2 = itS2->nth;
 	auto itT = TrainBpt.search(TrainKey(orderKey.TrainId, itS1->nth));
+	if (itT->start_time >= 1440) {
+		orderKey.dateNum--;
+	}
 	orderKey.Catalog = itS1.key().catalog;
 	auto itO = OrderBpt.search(orderKey);
 
@@ -343,6 +348,10 @@ bool buy_ticket() {
 	for (i = 0; i < itT->PriceNum; i++)
 		if (strcmp(orderKey.TicketKind, itT->Catalog[i]) == 0)
 			break;
+	if (i == itT->PriceNum) {
+		puts("0");
+		return 0;
+	}
 	auto tmp = itT;
 	for (; tmp.key().nth != itS2->nth; tmp++)
 		if (tmp->leftTicket[i][orderKey.dateNum] < order.Num) {

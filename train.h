@@ -231,6 +231,7 @@ bool add_train() {
 			trNd.start_time += 1440;
 			day_time = 1440;
 		}
+		last_start_time = trNd.start_time;
 		scanf("%s", ch);
 		trainKey.nth = i;
 		for (int j = 0; j < trNd.PriceNum; j++)
@@ -267,7 +268,7 @@ bool query_train() {
 	scanf("%s", Tid);
 	auto itTB = TrainBpt.search(TrainKey(Tid, 0));
 	//cout << "pub" << itTB->pub << endl;
-	if (!itTB.valid()) {
+	if (!itTB.valid() || !itTB->pub) {
 		puts("0");
 		return 0;
 	}
@@ -285,7 +286,6 @@ bool query_train() {
 		for (int j = 0; j < itTB->PriceNum; j++)
 			printf("￥%f%c", itTB->Price[j], " \n"[j == itTB->PriceNum - 1]);
 	}
-	puts("1");
 	return 1;
 }
 
