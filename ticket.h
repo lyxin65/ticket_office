@@ -11,20 +11,21 @@
 #include"train.h"
 
 struct ticket {
-	char trainId[21], num, ticketKind[5][41];
-	int leftTicket[5];
+	char trainId[21], num, ticketKind[5][21];
+	short leftTicket[5];
 	double price[5];
-	int date1, date2, time1, time2;
+	short date1, date2, time1, time2;
 	ticket() {}
-	ticket(const char *id, int _num, char *date, int t1, int t2) {
+	ticket(const char *id, int _num, int date0, int t1, int t2) {
 		strcpy(trainId, id);
 		num = _num;
-		date1 = (date[8] - '0') * 10 + date[9] - '0';
+		date1 = date0;
 		time1 = t1;
 		time2 = t2;
 		while (time1 >= 1440) {
 			time1 -= 1440;
 			time2 -= 1440;
+			date1++;
 		}
 		date2 = date1;
 		while (time2 >= 1440) {
@@ -78,11 +79,10 @@ bool cmp_start_time(const ticket &a, const ticket &b) {
 }
 
 
-void getleftticket(char *id, int l, int r, int n, int date, int left[], double pri[]) {
+void getleftticket(char *id, int l, int r, int n, int date, short left[], double pri[]) {
 	auto it = TrainBpt.search(TrainKey(id, l));
 	memset(left, 0x3f, sizeof(*left) * 5);
 	memset(pri, 0, sizeof(*pri) * 5);
-	int now = 0;
 	auto tmp = it;
 	while (true) {
 		tmp = it;
@@ -92,15 +92,11 @@ void getleftticket(char *id, int l, int r, int n, int date, int left[], double p
 		it++;
 		if (!(strcmp(id, it.key().TrainId) == 0 && it.key().nth <= r))
 			break;
-		int t = date;
-		if(tmp->start_time >= 1440)
-			t++;		
+		int t = date + tmp->start_time / 1440;
 		for (int i = 0; i < n; i++) {
-			if (left[i] > tmp->leftTicket[i][t]) 
+			if (left[i] > tmp->leftTicket[i][t])
 				left[i] = tmp->leftTicket[i][t];
 		}
-		if(it->start_time - now >= 1440)
-			date++, now += 1440;
 	}
 }
 
@@ -115,8 +111,9 @@ void getticket(char loc1[], char loc2[], char date[], char cat, vector<ticket> &
 		mystring<20> id1(it1.key().TrainId), id2(it2.key().TrainId);
 		if (id1 == id2 && it1->nth < it2.data().nth) {
 			int n = it1->PriceNum;
-			ticket t(id1.c_str(), n, date, it1->start_time, it2->arr_time);
-			getleftticket(const_cast<char*>(id1.c_str()), it1->nth, it2->nth, n, t.date1, t.leftTicket, t.price);
+			int date0 = (date[8] - '0') * 10 + date[9] - '0';
+			ticket t(id1.c_str(), n, date0, it1->start_time, it2->arr_time);
+			getleftticket(const_cast<char*>(id1.c_str()), it1->nth, it2->nth, n, date0, t.leftTicket, t.price);
 			for (int i = 0; i < n; i++)
 				strcpy(t.ticketKind[i], it1->Catalog[i]);
 			tmp.push_back(t);
@@ -176,7 +173,7 @@ bool query_ticket() {
 	return 1;
 }
 
-void try_transfer(char loc1[], char loc2[], char loc[], 
+void try_transfer(char loc1[], char loc2[], char loc[],
 char ans[], char date[], char catelog[], ticket res[], int &mn) {
 	for(int now = 0; now < (int)strlen(catelog); now++) {
 		auto it1 = StationBpt.lower_bound(StationKey(loc1, catelog[now]));
@@ -237,7 +234,8 @@ bool query_transfer() {
 
 class OrderKey {
 public:
-	int Id, nth1, nth2, dateNum;
+	int Id;
+	short nth1, nth2, dateNum;
 	char Catalog, TrainId[21], TicketKind[21];
 	bool operator<(const OrderKey &other)const {
 		if (Id > other.Id) return 0;
@@ -336,7 +334,7 @@ bool buy_ticket() {
 		puts("0");
 		return 0;
 	}
-	
+
 	orderKey.nth1 = itS1->nth;
 	orderKey.nth2 = itS2->nth;
 	auto itT = TrainBpt.search(TrainKey(orderKey.TrainId, itS1->nth));
@@ -355,15 +353,17 @@ bool buy_ticket() {
 		return 0;
 	}
 	auto tmp = itT;
-	for (; tmp.key().nth != itS2->nth; tmp++)
-		if (tmp->leftTicket[i][orderKey.dateNum] < order.Num) {
-			//std::cout <<tmp.key().nth<<" "<<i<<" " << tmp->leftTicket[i][orderKey.dateNum]<<" " << order.Num << " ";
+	for (; tmp.key().nth != itS2->nth; tmp++){
+		int date = orderKey.dateNum + tmp->start_time / 1440;
+		if (tmp->leftTicket[i][date] < order.Num) {
 			puts("0");
 			return 0;
 		}
+	}
 	int lr = itT.key().nth;
 	for (; itT.key().nth != itS2->nth; itT++) {
-		itT->leftTicket[i][orderKey.dateNum] -= order.Num;
+		int date = orderKey.dateNum + itT->start_time / 1440;
+		itT->leftTicket[i][date] -= order.Num;
 		if(itT.key().nth != lr) order.Price += itT->Price[i];
 		itT.save();
 	}
@@ -413,7 +413,7 @@ bool refund_ticket() {
 		if (strcmp(orderKey.TicketKind, itT->Catalog[i]) == 0)
 			break;
 
-	
+
 	for (; itT.key().nth != itS2->nth; itT++) {
 		itT->leftTicket[i][orderKey.dateNum] += num;
 		itT.save();
@@ -469,7 +469,7 @@ bool query_order() {
 		vecO[i].push_back(itO.data());
 		itO++;
 	}
-	
+
 	printf("%d\n", cnt);
 	for (int j = 0; j <= i; j++) {
 		printf("%s %s ", vec[j][0].TrainId, vecT1[j].StationName);

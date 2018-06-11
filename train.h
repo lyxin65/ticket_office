@@ -10,9 +10,8 @@
 #include "Bplustree.h"
 
 struct TrainKey {
-	friend void getleftticket(char *id, int l, int r, int n, int date, int left[], double pri[]);
 	char TrainId[21];
-	int nth;
+	short nth;
 
 	TrainKey() {
 		nth = 0;
@@ -54,7 +53,7 @@ class TrainNode {
 	friend class StationNode;
 public:
 	char TrainName[41];
-	char StationName[41];
+	char StationName[31];
 	char TrainCata;
 	int StationNum;
 	int PriceNum;

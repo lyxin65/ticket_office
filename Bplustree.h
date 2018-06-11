@@ -17,7 +17,7 @@ namespace sjtu {
 	public:
 		class Iterator;
 	private:
-		static const int maxKeyNum = 40;
+		static const int maxKeyNum = 20;
 		static const int miniKeyNum = maxKeyNum / 2;
 		static const int maxn = maxKeyNum + 2;
 
@@ -28,14 +28,12 @@ namespace sjtu {
 			int offset[maxn];
 			bool isLeaf;
 			int keyNum;
-			bool isRead;
 			Key key[maxn];
 			Key miniKey;
 
 			idxNode() {
 				isLeaf = false;
 				keyNum = -1;
-				isRead = false;
 			}
 
 		};
@@ -131,7 +129,7 @@ namespace sjtu {
 
 				File.seekp(t->offset[i], std::ios::beg);
 				File.write(reinterpret_cast<char *>(p), dataNodeSize);
-				File.flush();
+//				File.flush();
 				delete p;
 			}
 			else {
@@ -160,7 +158,7 @@ namespace sjtu {
 			int i = 0;
 			for (i = 0; i < t->keyNum; i++) {
 				if (t->key[i] == _k) {
-					puts("-----");
+		//			puts("-----");
 					t->data[i] = _data;
 					return NULL;
 				}
@@ -175,7 +173,7 @@ namespace sjtu {
 			Size++;
 			File.seekp(0, std::ios::beg);
 			File.write(reinterpret_cast<char *>(&Size), sizeof(int));
-			File.flush();
+//			File.flush();
 
 			if (t->keyNum <= maxKeyNum) return NULL;
 			else {
@@ -208,11 +206,11 @@ namespace sjtu {
 			t->keyNum++;
 			File.seekp(_offset, std::ios::beg);
 			File.write(reinterpret_cast<char *>(newNode), idxNodeSize);
-			File.flush();
+//			File.flush();
 			_offset += idxNodeSize;
 			File.seekp(sizeof(int), std::ios::beg);
 			File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
-			File.flush();
+//			File.flush();
 			if (t->keyNum <= maxKeyNum) {
 				delete newNode;
 				return NULL;
@@ -251,7 +249,7 @@ namespace sjtu {
 			_offset += dataNodeSize;
 			File.seekp(sizeof(int), std::ios::beg);
 			File.write(reinterpret_cast<char *>(&_offset), sizeof(int));
-			File.flush();
+//			File.flush();
 			if (t->keyNum <= Bplustree<Key, T>::maxKeyNum) {
 				delete newNode;
 				return NULL;
